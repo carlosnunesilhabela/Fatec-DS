@@ -626,9 +626,15 @@ save.image(file = "meu_espaco_de_trabalho.RData") # Salvar todo o espaço de tra
 # Referencia função de um determinado pacote - pacote::funcao (Utiliza-se 2 pontos duplos) ----
 
 # Read / Write .csv ----
-{ rec <- utils::read.table("receitas_vazia.csv", header = TRUE,
-                      sep = ";", dec = ",")
-  utils::write.csv(dados, file = "/Users/Eugenia/MQ/dados.csv") }
+receitas_acum <- read.csv(file = "Orçamento_Publico/receitas_vazia.csv", 
+                          sep = ";", 
+                          header = TRUE,
+                          encoding = "latin1" )
+
+# outra alternativa com o pacote utils
+rec <- utils::read.table("receitas_vazia.csv", header = TRUE,
+                         sep = ";", dec = ",")
+utils::write.csv(dados, file = "/Users/Eugenia/MQ/dados.csv") 
 
 # Read / Write .xlsx ----
 { Arquivo <- read_xlsx("Info_Mun.xlsx", sheet = 1, skip = 1, col_names = columns); 

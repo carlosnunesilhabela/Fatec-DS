@@ -20,9 +20,8 @@ lista_municipios <- lista_mun_rmvale$nm_mun            # default = 39 municipios
 #                      ou
 lista_municipios <- c("ilhabela") #, "ilhabela", "caraguatatuba", "sao-sebastiao", "ubatuba")
 
+anos <- c("2008","2025") # 2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024")  # colocar nesta variável, todos os anos que pretende baixar
 # anos <- readline(prompt = "Qual ano deseja baixar?: ")  # Opção: Digitar anos ou linha abaixo ou
-
-anos <- c("2025") # 2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024")  # colocar nesta variável, todos os anos que pretende baixar
 # Fim do Bloco 1 
 
 # Seção 2: Download - Atenção: para baixar arquivos da Web, certifique-se de estar conectado a uma rede WiFi ----

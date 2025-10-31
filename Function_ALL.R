@@ -242,82 +242,101 @@ download_receitas <- function(anos_f, lista_municipios_f) {
   library(readxl)
   library(writexl)
   
-  anos_f             <- "2025"
-  lista_municipios_f <- "ilhabela"
   tipo                <- "receitas"
   diretorio           <- getwd()
   
-  # cria um arquivo vazio para acumular os arquivos baixados
-  receitas_acum <- read.csv(file = "Orçamento_Publico/receitas_vazia.csv", 
-                            sep = ";", 
-                            header = TRUE,
-                            encoding = "latin1" )
-  
-  # caso deseje juntar com o arquivo historico, descomentariar as 2 linhas abaixo  
-  # dir_rec_ate2024  <- paste0(diretorio,"/Orçamento_Publico/Receitas-LN-2014-atual.xlsx")
-  # receitas_acum    <- read_xlsx(dir_rec_ate2024) # opção de juntar antigo 
-  
-  
-  for(ano in anos_f) { #Looping para baixar todos os anos e municipios recebidos no argumento da função
+  nloop               <- 0
     
-    for(mun in lista_municipios_f) {
+    for(ano in anos_f) { #Looping para baixar todos os anos e municipios recebidos no argumento da função
       
-      print (paste("baixando", tipo, "de:", mun, "ano:", ano))
-      
-      url_baixar <- paste("https://transparencia.tce.sp.gov.br/sites/default/files/csv/", tipo, "-", mun, "-", ano, ".zip",sep = "")
-      
-      df_name_zip   <- paste(tipo, "-", mun, "-", ano, ".zip",sep = "")
-      df_name_csv   <- paste(tipo, "-", mun, "-", ano, ".csv",sep = "")
-      df_name_pasta <- paste(tipo, "-", mun, "-", ano,        sep = "")
-      
-      download.file(url_baixar, df_name_zip)               #traz para meu diretorio (vem zipado)
-      unzip(df_name_zip, files = df_name_csv)              #Unzipa           
-      
-      #remove arquivos temporários
-      file.remove(df_name_zip)
-      # file.remove(df_name_pasta)
-      
-      receitas <- read.csv(file = df_name_csv, sep = ";", header = T, 
-                           encoding = "latin1",dec = ",")
-      receitas$categoria  <- ''   #Cria nova coluna Categoria
-      
-      receitas_acum <- rbind.data.frame(receitas_acum, receitas)
-      
-      rm (receitas)
-      file.remove (df_name_csv)
-      
-    }  # Fim do loop de município  
-  }  # Fim do loop de ano
+      for(mun in lista_municipios_f) { #Looping para baixar todos os municípios
+        nloop   <- nloop +1
+         
+        url_baixar <- paste("https://transparencia.tce.sp.gov.br/sites/default/files/csv/", tipo, "-", mun, "-", ano, ".zip",sep = "")
+        print (paste(nloop,"-baixando", tipo, "-", mun, "-", ano, url_baixar))
+        
+        # setar nome do arquivo .csv baixado 
+        if (ano < "2018") {  #  após 2018 foi retirado o .zip
+          df_name_csv   <- paste0(tipo, "-", mun, "-", ano, ".zip.csv")
+        } else {
+          df_name_csv   <- paste0(tipo, "-", mun, "-", ano, ".csv")  }
+        df_name_zip   <- paste0(tipo, "-", mun, "-", ano, ".zip")
+        df_name_pasta <- paste0(tipo, "-", mun, "-", ano)
+        
+        download.file(url_baixar, df_name_zip)               #traz para meu diretorio (vem zipado)
+        unzip(df_name_zip, files = df_name_csv)              #Unzipa           
+        
+        receitas <- read.csv(file = df_name_csv, sep = ";", header = T, encoding = "latin1",dec = ",")
+        
+        if("data_atualizacao" %in% names(receitas)) {  # 2008 à 2017 tinha a coluna data de atlz - não serve para nada
+            receitas$data_atualizacao <- NULL }
+       
+        if("ds_d1" %in% names(receitas))           { # a partir de 2022 essa colunas aparecem com outros nomes
+           receitas <- rename( receitas,
+                               ds_rubrica   = ds_d1,
+                               ds_alinea    = ds_dd2,
+                               ds_subalinea = ds_d3)  }
+        
+        if(!("ds_tipo" %in% names(receitas))) {
+           receitas$ds_tipo <- ""   }    
+        
+        receitas <- receitas %>%
+                    select(id_rec_arrec_detalhe,    ano_exercicio,    ds_municipio, 
+                    ds_orgao,                mes_referencia,   mes_ref_extenso, 
+                    ds_poder,                ds_fonte_recurso, ds_cd_aplicacao_fixo, 
+                    ds_cd_aplicacao_variavel,ds_categoria,     ds_subcategoria, 
+                    ds_fonte,                ds_rubrica,       ds_alinea, 
+                    ds_subalinea,            ds_tipo,          vl_arrecadacao)
   
-  colnames(receitas_acum) <-    #Rename nas colunas para terem nomes mais compreensíveis
-    c('Identificação da Receita',	
-      'Ano',	
-      'Municipio',	
-      'Orgão',	
-      'Mês',	
-      'Mês extenso',	
-      'Poder',	
-      'Fonte de Recurso',	
-      'Código aplicacao fixo',	
-      'Código aplicação variavel',	
-      'Categoria Econômica',	
-      'Sub Categoria',	
-      'Fonte',	
-      'Rubrica',	
-      'Alínea',	
-      'Sub Alínea',
-      'tipo',
-      'Valor arrecadacao',
-      'Categoria'
-    )
+        if (nloop == 1) {
+          if (exists("receitas_acum")) {
+            rm(receitas_acum)
+          }
+          receitas_acum <- receitas
+        } else {
+          receitas_acum <- rbind.data.frame(receitas_acum, receitas)
+        }
+       
+        #    remove arquivos temporários
+             unlink(df_name_zip)
+             file.remove(df_name_csv)
+             print(paste("file deletado: ", df_name_csv))
+             
+      }  # Fim do loop de município  
+    }  # Fim do loop de ano
+    
+    receitas_acum$Categoria  <- ''   #Cria nova coluna Categoria (uso futuro para categorização das receitas)
+    receitas_acum$vl_arrecadacao  <- as.numeric(receitas_acum$vl_arrecadacao)
   
-  dsname_Rdata <- paste(tipo, "-", "municipios", "-", ano, ".Rdata",sep = "")
-  save(receitas_acum, file = dsname_Rdata) # grava resultado em formato RData
-  
-  dsname_xlsx <- paste(tipo, "-", "municipios", "-", ano, ".xlsx",sep = "")
-  write_xlsx(receitas_acum, dsname_xlsx) #grava data frame em formato *.xlsx
+      colnames(receitas_acum) <-    #Rename nas colunas para terem nomes mais compreensíveis
+      c('Identificação da Receita',	
+        'Ano',	
+        'Municipio',	
+        'Orgão',	
+        'Mês',	
+        'Mês extenso',	
+        'Poder',	
+        'Fonte de Recurso',	
+        'Código aplicacao fixo',	
+        'Código aplicação variavel',	
+        'Categoria Econômica',	
+        'Sub Categoria',	
+        'Fonte',	
+        'Rubrica',	
+        'Alínea',	
+        'Sub Alínea',
+        'tipo',
+        'Valor arrecadacao',
+        'Categoria')
+    
+    dsname_xlsx <- paste0(tipo, "-", "baixadas", ".xlsx")
+    
+    write_xlsx(receitas_acum, dsname_xlsx) #grava data frame em formato *.xlsx
+    
+    print(paste("Arquivo gravado - ", dsname_xlsx, " - num.linhas:", nrow(receitas_acum)))
   
 } # FUNÇÃO download_receitas do TCE  - municípios da lista_mun_minusculas
+
 # Função: Standardização do histórico das despesas (retira caracteres especiais, numeros e uppercase) ----
 
 std_histdesp <- function(dsname) {
